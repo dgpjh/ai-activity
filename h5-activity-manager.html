@@ -133,47 +133,71 @@ textarea.text-input { min-height: 80px; resize: vertical; font-family: inherit; 
 
 .btn-danger:hover { background: #FCEBEB; }
 
-.preview-frame { background: #fff; border-radius: 16px; box-shadow: 0 4px 24px rgba(0,0,0,.1); overflow: hidden; transition: all .3s; }
+.preview-frame { background: #fff; border-radius: 16px; box-shadow: 0 4px 24px rgba(0,0,0,.1); overflow: hidden; transition: all .3s; position: relative; }
 
 .preview-frame.mobile { width: 375px; height: 680px; }
 
 .preview-frame.pc { width: 100%; max-width: 960px; height: 600px; }
 
-.preview-scroll { width: 100%; height: 100%; overflow-y: auto; }
+.preview-scroll { width: 100%; height: 100%; overflow-y: auto; position: relative; }
 
 .preview-scroll::-webkit-scrollbar { width: 4px; }
 
 .preview-scroll::-webkit-scrollbar-thumb { background: #C4CACD; border-radius: 2px; }
 
+/* 预览页顶部栏 */
+.pv-topbar { position: sticky; top: 0; z-index: 10; height: 44px; background: linear-gradient(135deg, #6B3FA1, #8B4FC6); display: flex; align-items: center; justify-content: space-between; padding: 0 12px; color: #fff; font-size: 15px; }
+.pv-topbar .pv-back { font-size: 20px; cursor: pointer; width: 28px; }
+.pv-topbar .pv-title { font-size: 15px; font-weight: 600; }
+.pv-topbar .pv-share { font-size: 18px; cursor: pointer; width: 28px; text-align: right; }
+
+/* 预览页悬浮按钮 */
+.pv-float-btn { position: -webkit-sticky; position: sticky; float: right; right: 0; top: 50%; z-index: 20; background: #6B3FA1; color: #fff; border-radius: 16px 0 0 16px; padding: 10px 8px; font-size: 12px; font-weight: 600; box-shadow: 0 2px 12px rgba(107,63,161,.3); cursor: pointer; writing-mode: vertical-rl; letter-spacing: 1px; margin-right: -12px; }
+
+/* 预览页头图 */
 .pv-header { width: 100%; display: block; }
 
-.pv-body { padding: 16px; }
+/* 预览页主体 */
+.pv-body { padding: 0 0 20px 0; }
 
-.pv-module-img { width: 100%; border-radius: 8px; margin: 12px 0; }
+/* 抽奖模块卡片 */
+.pv-lottery-card { background: #fff; border-radius: 16px; margin: 12px; padding: 16px; box-shadow: 0 2px 12px rgba(107,63,161,.1); }
+.pv-lottery-title { font-size: 17px; font-weight: 700; color: #333; text-align: center; }
+.pv-lottery-subtitle { font-size: 12px; color: #999; text-align: center; margin-top: 2px; }
+.pv-lottery-chances { text-align: center; font-size: 13px; color: #6B3FA1; margin: 10px 0; }
+.pv-lottery-chances span { font-weight: 700; font-size: 18px; }
+.pv-lottery-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 12px 0; }
+.pv-lottery-prize { background: #F8F5FF; border-radius: 10px; padding: 8px 4px; text-align: center; }
+.pv-lottery-prize-icon { font-size: 28px; }
+.pv-lottery-prize-name { font-size: 11px; color: #333; margin-top: 4px; }
+.pv-lottery-prize-prob { font-size: 10px; color: #999; }
+.pv-lottery-btn { display: block; width: 80%; margin: 12px auto 0 auto; padding: 10px; border-radius: 20px; border: none; background: linear-gradient(135deg, #6B3FA1, #8B4FC6); color: #fff; font-size: 15px; font-weight: 600; cursor: pointer; text-align: center; }
+.pv-lottery-tasks { margin-top: 12px; padding: 10px; background: #F8F5FF; border-radius: 10px; }
+.pv-lottery-tasks-title { font-size: 12px; color: #666; margin-bottom: 6px; }
+.pv-lottery-task-item { display: flex; align-items: center; justify-content: space-between; padding: 6px 0; font-size: 12px; color: #333; border-bottom: 1px solid #EEE; }
+.pv-lottery-task-item:last-child { border-bottom: none; }
+.pv-lottery-task-item .task-name { flex: 1; }
+.pv-lottery-task-item .task-go { color: #6B3FA1; font-weight: 600; font-size: 12px; }
 
-.pv-play-area { background: linear-gradient(135deg, #EEEDFE, #E6F1FB); border-radius: 12px; padding: 20px; margin: 12px 0; text-align: center; }
+/* 领取模块卡片 */
+.pv-claim-card { background: #fff; border-radius: 16px; margin: 12px; padding: 16px; box-shadow: 0 2px 12px rgba(107,63,161,.1); }
+.pv-claim-title { font-size: 17px; font-weight: 700; color: #333; }
+.pv-claim-subtitle { font-size: 12px; color: #999; margin-top: 2px; }
+.pv-claim-prize { display: flex; align-items: center; gap: 12px; margin: 12px 0; padding: 12px; background: #FFF8F0; border-radius: 10px; }
+.pv-claim-prize-icon { width: 48px; height: 48px; border-radius: 10px; background: linear-gradient(135deg, #FFE0B2, #FFCC80); display: flex; align-items: center; justify-content: center; font-size: 24px; flex-shrink: 0; }
+.pv-claim-prize-info { flex: 1; }
+.pv-claim-prize-name { font-size: 14px; font-weight: 600; color: #333; }
+.pv-claim-prize-desc { font-size: 11px; color: #999; margin-top: 2px; }
+.pv-claim-btn { display: block; width: 80%; margin: 12px auto 0 auto; padding: 10px; border-radius: 20px; border: none; background: linear-gradient(135deg, #FF8F5E, #FF6B35); color: #fff; font-size: 15px; font-weight: 600; cursor: pointer; text-align: center; }
+.pv-claim-task { margin-top: 12px; padding: 10px; background: #F8F5FF; border-radius: 10px; display: flex; align-items: center; justify-content: space-between; }
+.pv-claim-task-name { font-size: 12px; color: #333; flex: 1; }
+.pv-claim-task-go { color: #6B3FA1; font-weight: 600; font-size: 12px; }
 
-.pv-play-title { font-size: 18px; font-weight: 700; color: #333; margin-bottom: 4px; }
-
-.pv-play-subtitle { font-size: 13px; color: #666; margin-bottom: 16px; }
-
-.pv-gift-box { display: inline-flex; flex-direction: column; align-items: center; gap: 8px; }
-
-.pv-gift-icon { width: 72px; height: 72px; border-radius: 16px; background: #fff; display: flex; align-items: center; justify-content: center; font-size: 32px; box-shadow: 0 2px 8px rgba(0,0,0,.1); }
-
-.pv-gift-name { font-size: 14px; font-weight: 600; color: #333; }
-
-.pv-gift-probability { font-size: 12px; color: #888; margin-top: 2px; }
-
-.pv-btn { display: inline-block; padding: 12px 48px; border-radius: 24px; font-size: 15px; font-weight: 600; margin-top: 16px; cursor: pointer; border: none; }
-
-.pv-btn.claim { background: linear-gradient(135deg, #FF6B35, #FF8F5E); color: #fff; }
-
-.pv-btn.lottery { background: linear-gradient(135deg, #185FA5, #378ADD); color: #fff; }
-
-.pv-conditions { margin-top: 16px; padding: 12px; background: #F5F7FA; border-radius: 8px; }
-
-.pv-condition-tag { display: inline-block; padding: 4px 12px; background: #E6F1FB; color: #185FA5; border-radius: 20px; font-size: 12px; margin: 4px; }
+/* 素材模块 */
+.pv-material-card { margin: 12px; }
+.pv-material-title { font-size: 15px; font-weight: 700; color: #fff; margin-bottom: 8px; }
+.pv-material-img { width: 100%; border-radius: 10px; margin-bottom: 8px; }
+.pv-material-text { font-size: 12px; color: rgba(255,255,255,.8); line-height: 1.6; }
 
 .pv-empty { text-align: center; padding: 60px 20px; color: #C4CACD; font-size: 14px; }
 
@@ -775,89 +799,120 @@ function initGiftPackOptions() {
 // ==================== 预览更新 ====================
 function updatePreview() {
   var container = document.getElementById("previewContent");
-  var empty = document.getElementById("pvEmpty");
   
   var hasContent = state.headerImage || 
                    state.materials.some(function(m) { return m.image; }) || 
                    state.playModules.some(function(m) { return m.playType || m.title || m.gifts.some(function(g) { return g.giftPackId || g.condition || g.probability; }); });
   
   if (!hasContent) {
-    container.innerHTML = "";
-    container.appendChild(empty);
-    empty.style.display = "block";
+    container.innerHTML = '<div class="pv-empty">👈 请在左侧配置活动信息<br>配置后将实时预览效果</div>';
     return;
   }
   
-  empty.style.display = "none";
   var html = "";
+  
+  // 顶部固定紫色栏
+  html += '<div class="pv-topbar">';
+  html += '<span class="pv-back">‹</span>';
+  html += '<span class="pv-title">' + (state.playModules.length > 0 && state.playModules[0].title ? state.playModules[0].title : '活动详情') + '</span>';
+  html += '<span class="pv-share">⊕</span>';
+  html += '</div>';
+  
+  // 右侧悬浮"领取记录"
+  html += '<div class="pv-float-btn">领取记录</div>';
   
   // 头图
   if (state.headerImage) {
-    html += '<img class="pv-header" src="' + state.headerImage + '" alt="头图" style="background:' + state.bgColor + '">';
+    html += '<img class="pv-header" src="' + state.headerImage + '" alt="头图">';
   }
   
   html += '<div class="pv-body" style="background:' + state.bgColor + '">';
   
-  // 素材图片
-  state.materials.forEach(function(material) {
-    if (material.image) {
-      html += '<img class="pv-module-img" src="' + material.image + '" alt="素材模块">';
-    }
-  });
-  
   // 玩法模块
   state.playModules.forEach(function(module) {
     if (module.playType || module.title) {
-      var isClaim = module.playType === "claim";
-      
-      html += '<div class="pv-play-area">';
-      
-      // 显示标题和副标题
-      if (module.title) {
-        html += '<div class="pv-play-title">' + module.title + '</div>';
-      }
-      if (module.subtitle) {
-        html += '<div class="pv-play-subtitle">' + module.subtitle + '</div>';
-      }
-      
-      // 抽奖模块显示获取抽奖机会的条件
-      if (module.playType === "lottery" && module.condition) {
-        html += '<div class="pv-conditions" style="margin-bottom:12px;">';
-        html += '<div style="font-size:13px;color:#555;margin-bottom:8px;font-weight:500">📋 获取抽奖机会条件</div>';
-        html += '<span class="pv-condition-tag">' + module.condition + '</span>';
-        html += '</div>';
-      }
-      
-      // 渲染福利
-      module.gifts.forEach(function(gift) {
-        if (gift.giftPackId || (module.playType === "claim" && gift.condition)) {
-          html += '<div class="pv-gift-box" style="margin:12px auto;">';
-          html += '<div class="pv-gift-icon">' + (gift.giftIcon || "🎁") + '</div>';
-          html += '<div class="pv-gift-name">' + (gift.giftTitle || "福利礼包") + '</div>';
-          
-          // 抽奖类型显示概率
-          if (module.playType === "lottery" && gift.probability) {
-            html += '<div class="pv-gift-probability">概率：' + gift.probability + '</div>';
+      if (module.playType === "lottery") {
+        // 抽奖模块卡片
+        html += '<div class="pv-lottery-card">';
+        if (module.title) {
+          html += '<div class="pv-lottery-title">' + module.title + '</div>';
+        }
+        if (module.subtitle) {
+          html += '<div class="pv-lottery-subtitle">' + module.subtitle + '</div>';
+        }
+        // 剩余抽奖次数（示意）
+        html += '<div class="pv-lottery-chances">剩余抽奖次数：<span>3</span> 次</div>';
+        // 奖品宫格
+        html += '<div class="pv-lottery-grid">';
+        module.gifts.forEach(function(gift) {
+          html += '<div class="pv-lottery-prize">';
+          html += '<div class="pv-lottery-prize-icon">' + (gift.giftIcon || "🎁") + '</div>';
+          html += '<div class="pv-lottery-prize-name">' + (gift.giftTitle || "奖品") + '</div>';
+          if (gift.probability) {
+            html += '<div class="pv-lottery-prize-prob">概率：' + gift.probability + '</div>';
           }
-          
           html += '</div>';
-          
-          // 领取类型显示每个福利的任务条件
-          if (module.playType === "claim" && gift.condition) {
-            html += '<div class="pv-conditions">';
-            html += '<div style="font-size:13px;color:#555;margin-bottom:8px;font-weight:500">📋 任务条件</div>';
-            html += '<span class="pv-condition-tag">' + gift.condition + '</span>';
+        });
+        html += '</div>';
+        // 抽奖按钮
+        html += '<div class="pv-lottery-btn">🎰 立即抽奖</div>';
+        // 任务列表（获取抽奖机会的条件）
+        if (module.condition) {
+          html += '<div class="pv-lottery-tasks">';
+          html += '<div class="pv-lottery-tasks-title">📋 获取抽奖机会</div>';
+          html += '<div class="pv-lottery-task-item">';
+          html += '<span class="task-name">' + module.condition + '</span>';
+          html += '<span class="task-go">去完成 ›</span>';
+          html += '</div>';
+          html += '</div>';
+        }
+        html += '</div>';
+      } else {
+        // 领取模块卡片
+        module.gifts.forEach(function(gift) {
+          if (gift.giftPackId || gift.condition) {
+            html += '<div class="pv-claim-card">';
+            if (module.title) {
+              html += '<div class="pv-claim-title">' + module.title + '</div>';
+            }
+            if (module.subtitle) {
+              html += '<div class="pv-claim-subtitle">' + module.subtitle + '</div>';
+            }
+            // 奖品信息
+            html += '<div class="pv-claim-prize">';
+            html += '<div class="pv-claim-prize-icon">' + (gift.giftIcon || "🎁") + '</div>';
+            html += '<div class="pv-claim-prize-info">';
+            html += '<div class="pv-claim-prize-name">' + (gift.giftTitle || "福利礼包") + '</div>';
+            html += '<div class="pv-claim-prize-desc">ID: ' + (gift.giftPackId || "----") + '</div>';
+            html += '</div>';
+            html += '</div>';
+            // 领取按钮
+            html += '<div class="pv-claim-btn">🎁 立即领取</div>';
+            // 任务条件
+            if (gift.condition) {
+              html += '<div class="pv-claim-task">';
+              html += '<span class="pv-claim-task-name">' + gift.condition + '</span>';
+              html += '<span class="pv-claim-task-go">去完成 ›</span>';
+              html += '</div>';
+            }
             html += '</div>';
           }
-        }
-      });
-      
-      // 按钮
-      html += '<div class="pv-btn ' + (isClaim ? "claim" : "lottery") + '">' + (isClaim ? "🎁 立即领取" : "🎰 立即抽奖") + '</div>';
-      
-      html += '</div>';
+        });
+      }
     }
   });
+  
+  // 素材模块
+  var materialImages = state.materials.filter(function(m) { return m.image; });
+  if (materialImages.length > 0) {
+    html += '<div class="pv-material-card">';
+    html += '<div class="pv-material-title">📦 活动素材</div>';
+    materialImages.forEach(function(material) {
+      html += '<img class="pv-material-img" src="' + material.image + '" alt="素材">';
+    });
+    html += '<div class="pv-material-text">以上为活动相关素材，长按保存图片分享给好友吧～</div>';
+    html += '</div>';
+  }
   
   html += '</div>';
   container.innerHTML = html;
