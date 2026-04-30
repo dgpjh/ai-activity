@@ -1,0 +1,1071 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>H5 活动管理端</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif; background: #F5F7FA; color: #333; min-height: 100vh; }
+
+.topbar { height: 56px; background: #185FA5; display: flex; align-items: center; padding: 0 24px; color: #fff; font-size: 18px; font-weight: 600; box-shadow: 0 2px 8px rgba(0,0,0,.15); position: fixed; top: 0; left: 0; right: 0; z-index: 100; }
+
+.topbar .subtitle { font-size: 13px; font-weight: 400; margin-left: 16px; opacity: .8; }
+
+.main { display: flex; margin-top: 56px; height: calc(100vh - 56px); }
+
+.config-panel { width: 560px; min-width: 560px; background: #fff; overflow-y: auto; border-right: 1px solid #E5E9EF; padding: 20px; }
+
+.config-panel::-webkit-scrollbar { width: 6px; }
+
+.config-panel::-webkit-scrollbar-thumb { background: #C4CACD; border-radius: 3px; }
+
+.preview-panel { flex: 1; background: #F5F7FA; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; align-items: center; }
+
+.preview-label { font-size: 13px; color: #888; margin-bottom: 12px; text-align: center; }
+
+.card { background: #fff; border-radius: 12px; border: 1px solid #E5E9EF; padding: 20px; margin-bottom: 16px; }
+
+.card-title { font-size: 15px; font-weight: 600; color: #185FA5; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+
+.card-title .icon { width: 24px; height: 24px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 14px; }
+
+.form-group { margin-bottom: 16px; }
+
+.form-label { font-size: 13px; font-weight: 500; color: #555; margin-bottom: 6px; display: flex; align-items: center; gap: 4px; }
+
+.form-label .required { color: #E24B4A; }
+
+.form-tip { font-size: 11px; color: #999; margin-top: 4px; }
+
+.radio-group { display: flex; gap: 12px; }
+
+.radio-item { flex: 1; border: 1.5px solid #D3D1C7; border-radius: 8px; padding: 12px; cursor: pointer; display: flex; align-items: center; gap: 8px; transition: all .2s; user-select: none; }
+
+.radio-item:hover { border-color: #185FA5; background: #F5F7FA; }
+
+.radio-item.active { border-color: #185FA5; background: #E6F1FB; }
+
+.radio-item input { display: none; }
+
+.radio-dot { width: 18px; height: 18px; border-radius: 50%; border: 2px solid #C4CACD; flex-shrink: 0; transition: all .2s; display: flex; align-items: center; justify-content: center; }
+
+.radio-item.active .radio-dot { border-color: #185FA5; }
+
+.radio-item.active .radio-dot::after { content: ""; width: 10px; height: 10px; border-radius: 50%; background: #185FA5; display: block; }
+
+.radio-text { font-size: 14px; }
+
+.upload-zone { border: 2px dashed #C4CACD; border-radius: 10px; padding: 24px; text-align: center; cursor: pointer; transition: all .2s; position: relative; }
+
+.upload-zone:hover { border-color: #185FA5; background: #F5F7FA; }
+
+.upload-zone.has-file { border-color: #0F6E56; border-style: solid; background: #F5FAF7; }
+
+.upload-icon { font-size: 32px; margin-bottom: 8px; }
+
+.upload-text { font-size: 13px; color: #888; }
+
+.upload-size { font-size: 11px; color: #B4B2A9; margin-top: 4px; }
+
+.upload-preview { max-width: 100%; border-radius: 6px; margin-top: 12px; max-height: 200px; object-fit: cover; }
+
+.upload-zone input[type=file] { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+
+.color-row { display: flex; align-items: center; gap: 12px; }
+
+.color-picker-wrap { position: relative; width: 48px; height: 48px; border-radius: 8px; overflow: hidden; border: 1px solid #D3D1C7; cursor: pointer; }
+
+.color-picker-wrap input[type=color] { position: absolute; width: 60px; height: 60px; top: -6px; left: -6px; border: none; cursor: pointer; padding: 0; }
+
+.color-hex { font-size: 14px; font-family: monospace; color: #555; background: #F5F7FA; border: 1px solid #D3D1C7; border-radius: 6px; padding: 8px 12px; width: 120px; }
+
+.color-auto { font-size: 12px; color: #185FA5; cursor: pointer; margin-left: 8px; }
+
+.color-auto:hover { text-decoration: underline; }
+
+.select-box { width: 100%; padding: 10px 14px; border-radius: 8px; border: 1.5px solid #D3D1C7; font-size: 13px; color: #333; background: #fff; cursor: pointer; appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M3 5l3 3 3-3' fill='none' stroke='%23999' stroke-width='1.5'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; }
+
+.select-box:focus { outline: none; border-color: #185FA5; }
+
+.text-input { width: 100%; padding: 10px 14px; border-radius: 8px; border: 1.5px solid #D3D1C7; font-size: 13px; color: #333; background: #fff; }
+
+.text-input:focus { outline: none; border-color: #185FA5; }
+
+textarea.text-input { min-height: 80px; resize: vertical; font-family: inherit; }
+
+.gift-info { display: flex; align-items: center; gap: 12px; padding: 12px; background: #F5F7FA; border-radius: 8px; margin-top: 10px; }
+
+.gift-icon { width: 56px; height: 56px; border-radius: 10px; background: linear-gradient(135deg, #EEEDFE, #E6F1FB); display: flex; align-items: center; justify-content: center; font-size: 24px; flex-shrink: 0; }
+
+.gift-detail { flex: 1; }
+
+.gift-title { font-size: 14px; font-weight: 600; color: #333; }
+
+.gift-id { font-size: 12px; color: #999; margin-top: 2px; }
+
+.condition-input { width: 100%; }
+
+.condition-btn { width: 32px; height: 32px; border-radius: 8px; border: 1.5px solid #D3D1C7; background: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 18px; color: #888; flex-shrink: 0; transition: all .2s; }
+
+.condition-btn:hover { border-color: #185FA5; color: #185FA5; }
+
+.condition-btn.del:hover { border-color: #E24B4A; color: #E24B4A; }
+
+.add-btn { font-size: 13px; color: #185FA5; cursor: pointer; margin-top: 8px; display: inline-flex; align-items: center; gap: 4px; }
+
+.add-btn:hover { text-decoration: underline; }
+
+.action-bar { display: flex; gap: 10px; padding: 16px 0; border-top: 1px solid #E5E9EF; margin-top: 8px; }
+
+.btn { padding: 10px 20px; border-radius: 8px; font-size: 13px; font-weight: 500; cursor: pointer; border: none; transition: all .2s; }
+
+.btn-primary { background: #185FA5; color: #fff; }
+
+.btn-primary:hover { background: #0C447C; }
+
+.btn-outline { background: #fff; color: #555; border: 1.5px solid #D3D1C7; }
+
+.btn-outline:hover { border-color: #185FA5; color: #185FA5; }
+
+.btn-danger { background: #fff; color: #E24B4A; border: 1.5px solid #F7C1C1; }
+
+.btn-danger:hover { background: #FCEBEB; }
+
+.preview-frame { background: #fff; border-radius: 16px; box-shadow: 0 4px 24px rgba(0,0,0,.1); overflow: hidden; transition: all .3s; }
+
+.preview-frame.mobile { width: 375px; height: 680px; }
+
+.preview-frame.pc { width: 100%; max-width: 960px; height: 600px; }
+
+.preview-scroll { width: 100%; height: 100%; overflow-y: auto; }
+
+.preview-scroll::-webkit-scrollbar { width: 4px; }
+
+.preview-scroll::-webkit-scrollbar-thumb { background: #C4CACD; border-radius: 2px; }
+
+.pv-header { width: 100%; display: block; }
+
+.pv-body { padding: 16px; }
+
+.pv-module-img { width: 100%; border-radius: 8px; margin: 12px 0; }
+
+.pv-play-area { background: linear-gradient(135deg, #EEEDFE, #E6F1FB); border-radius: 12px; padding: 20px; margin: 12px 0; text-align: center; }
+
+.pv-play-title { font-size: 18px; font-weight: 700; color: #333; margin-bottom: 4px; }
+
+.pv-play-subtitle { font-size: 13px; color: #666; margin-bottom: 16px; }
+
+.pv-gift-box { display: inline-flex; flex-direction: column; align-items: center; gap: 8px; }
+
+.pv-gift-icon { width: 72px; height: 72px; border-radius: 16px; background: #fff; display: flex; align-items: center; justify-content: center; font-size: 32px; box-shadow: 0 2px 8px rgba(0,0,0,.1); }
+
+.pv-gift-name { font-size: 14px; font-weight: 600; color: #333; }
+
+.pv-gift-probability { font-size: 12px; color: #888; margin-top: 2px; }
+
+.pv-btn { display: inline-block; padding: 12px 48px; border-radius: 24px; font-size: 15px; font-weight: 600; margin-top: 16px; cursor: pointer; border: none; }
+
+.pv-btn.claim { background: linear-gradient(135deg, #FF6B35, #FF8F5E); color: #fff; }
+
+.pv-btn.lottery { background: linear-gradient(135deg, #185FA5, #378ADD); color: #fff; }
+
+.pv-conditions { margin-top: 16px; padding: 12px; background: #F5F7FA; border-radius: 8px; }
+
+.pv-condition-tag { display: inline-block; padding: 4px 12px; background: #E6F1FB; color: #185FA5; border-radius: 20px; font-size: 12px; margin: 4px; }
+
+.pv-empty { text-align: center; padding: 60px 20px; color: #C4CACD; font-size: 14px; }
+
+.toast { position: fixed; top: 72px; left: 50%; transform: translateX(-50%); padding: 12px 24px; border-radius: 8px; font-size: 14px; z-index: 999; opacity: 0; transition: opacity .3s; pointer-events: none; }
+
+.toast.show { opacity: 1; }
+
+.toast-success { background: #E6F7EE; color: #0F6E56; border: 1px solid #5DCAA5; }
+
+.toast-error { background: #FCEBEB; color: #A32D2D; border: 1px solid #F09595; }
+
+/* 素材模块样式 */
+.material-list { display: flex; flex-direction: column; gap: 12px; }
+
+.material-item { position: relative; border: 1px solid #E5E9EF; border-radius: 10px; padding: 12px; }
+
+.material-item-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+
+.material-item-title { font-size: 13px; font-weight: 500; color: #555; }
+
+.material-item-del { width: 28px; height: 28px; border-radius: 6px; border: 1px solid #F7C1C1; background: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 16px; color: #E24B4A; transition: all .2s; }
+
+.material-item-del:hover { background: #FCEBEB; }
+
+/* 玩法模块样式 */
+.play-module { border: 1px solid #E5E9EF; border-radius: 10px; padding: 16px; margin-bottom: 12px; position: relative; }
+
+.play-module-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+
+.play-module-title { font-size: 14px; font-weight: 600; color: #333; }
+
+.play-module-del { width: 28px; height: 28px; border-radius: 6px; border: 1px solid #F7C1C1; background: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 16px; color: #E24B4A; transition: all .2s; }
+
+.play-module-del:hover { background: #FCEBEB; }
+
+.play-module-condition { margin-top: 12px; padding: 12px; background: #F5F7FA; border-radius: 8px; }
+
+/* 福利样式 */
+.gift-list { display: flex; flex-direction: column; gap: 12px; }
+
+.gift-item { border: 1px dashed #D3D1C7; border-radius: 8px; padding: 12px; position: relative; }
+
+.gift-item-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+
+.gift-item-title { font-size: 12px; font-weight: 500; color: #888; }
+
+.gift-item-del { width: 24px; height: 24px; border-radius: 4px; border: 1px solid #F7C1C1; background: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 14px; color: #E24B4A; transition: all .2s; }
+
+.gift-item-del:hover { background: #FCEBEB; }
+
+.gift-condition { margin-top: 10px; }
+
+.gift-condition-label { font-size: 12px; color: #888; margin-bottom: 4px; }
+
+.gift-probability { margin-top: 10px; }
+
+.gift-probability-label { font-size: 12px; color: #888; margin-bottom: 4px; }
+
+@media (max-width: 900px) {
+  .main { flex-direction: column; }
+  .config-panel { width: 100%; min-width: auto; }
+  .preview-panel { display: none; }
+}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <span>&#127920; H5 活动管理端</span>
+  <span class="subtitle">活动页面配置工具</span>
+</div>
+
+<div class="main">
+  <!-- 左侧配置面板 -->
+  <div class="config-panel">
+    <!-- 端类型选择 -->
+    <div class="card">
+      <div class="card-title"><span class="icon" style="background:#E6F1FB;color:#185FA5">&#128241;</span> 选择端类型</div>
+      <div class="radio-group" id="platformGroup">
+        <div class="radio-item active" onclick="selectPlatform('mobile', this)">
+          <div class="radio-dot"></div>
+          <div class="radio-text">&#128241; 移动端</div>
+        </div>
+        <div class="radio-item" onclick="selectPlatform('pc', this)">
+          <div class="radio-dot"></div>
+          <div class="radio-text">&#128421; PC端</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 素材配置 -->
+    <div class="card">
+      <div class="card-title"><span class="icon" style="background:#FCEBEB;color:#A32D2D">&#128396;&#65039;</span> 素材配置</div>
+      
+      <div class="form-group">
+        <div class="form-label"><span class="required">*</span> 头图上传</div>
+        <div class="upload-zone" id="headerUpload" onclick="document.getElementById('headerInput').click()">
+          <div class="upload-icon">&#128396;&#65039;</div>
+          <div class="upload-text">点击或拖拽上传头图</div>
+          <div class="upload-size" id="headerSizeTip">移动端尺寸：750 x 950 px</div>
+          <img class="upload-preview" id="headerPreview" style="display:none">
+          <input type="file" id="headerInput" accept="image/*" onchange="handleHeaderUpload(event)">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <div class="form-label">背景色 <span style="color:#999;font-weight:400;font-size:11px">（自动从图片提取，可手动修改）</span></div>
+        <div class="color-row">
+          <div class="color-picker-wrap">
+            <input type="color" id="bgColor" value="#F5F7FA" onchange="onBgColorChange()">
+          </div>
+          <input class="color-hex" id="bgColorHex" value="#F5F7FA" maxlength="7" onchange="onBgColorHexChange()">
+          <span class="color-auto" onclick="autoExtractColor()">&#128260; 自动提取头图主色</span>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <div class="form-label">素材模块图片 <span style="color:#999;font-weight:400;font-size:11px">（可添加多个）</span></div>
+        <div class="material-list" id="materialList"></div>
+        <div class="add-btn" onclick="addMaterial()" style="margin-top: 12px;">+ 添加素材</div>
+      </div>
+    </div>
+
+    <!-- 玩法模块 -->
+    <div class="card">
+      <div class="card-title"><span class="icon" style="background:#E1F5EE;color:#0F6E56">&#127919;</span> 玩法模块</div>
+      
+      <div id="playModuleList"></div>
+      
+      <div class="add-btn" onclick="addPlayModule()" style="margin-top: 12px;">+ 添加玩法模块</div>
+    </div>
+
+    <!-- 操作按钮 -->
+    <div class="action-bar">
+      <button class="btn btn-primary" onclick="exportConfig()">&#128229; 导出配置</button>
+      <button class="btn btn-outline" onclick="importConfig()">&#128228; 导入配置</button>
+      <button class="btn btn-danger" onclick="resetConfig()">&#128260; 重置</button>
+    </div>
+  </div>
+
+  <!-- 右侧预览面板 -->
+  <div class="preview-panel">
+    <div class="preview-label" id="previewLabel">&#128241; 移动端预览</div>
+    <div class="preview-frame mobile" id="previewFrame">
+      <div class="preview-scroll" id="previewContent">
+        <div class="pv-empty" id="pvEmpty">
+          &#128072; 请在左侧配置活动信息<br>配置后将实时预览效果
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ==================== 全局状态 ====================
+let state = {
+  platform: "mobile",
+  headerImage: "",
+  materials: [], // {id, image}
+  bgColor: "#F5F7FA",
+  playModules: [createEmptyPlayModule()] // 玩法模块数组
+};
+
+function createEmptyPlayModule() {
+  return {
+    id: Date.now(),
+    title: "", // 标题
+    subtitle: "", // 副标题
+    playType: "",
+    condition: "", // 任务条件（抽奖模块用这个获取抽奖机会）
+    gifts: [createEmptyGift()] // 每个玩法模块至少有一个福利
+  };
+}
+
+function createEmptyGift() {
+  return {
+    id: Date.now(),
+    giftPackId: "",
+    giftTitle: "",
+    giftIcon: "",
+    condition: "", // 任务条件（领取类型每个福利一个条件）
+    probability: "" // 概率（抽奖类型使用）
+  };
+}
+
+// ==================== 初始化 ====================
+window.addEventListener("DOMContentLoaded", function() {
+  initGiftPackOptions();
+  renderPlayModules();
+  loadFromLocalStorage();
+  updatePreview();
+});
+
+// ==================== 端类型选择 ====================
+function selectPlatform(platform, el) {
+  state.platform = platform;
+  document.querySelectorAll("#platformGroup .radio-item").forEach(function(i) { i.classList.remove("active"); });
+  el.classList.add("active");
+  document.getElementById("headerSizeTip").textContent = platform === "mobile" ? "移动端尺寸：750 x 950 px" : "PC 端尺寸：1920 x 700 px";
+  document.getElementById("previewLabel").textContent = platform === "mobile" ? "📱 移动端预览" : "🖥 PC端预览";
+  var frame = document.getElementById("previewFrame");
+  frame.className = "preview-frame " + (platform === "mobile" ? "mobile" : "pc");
+  updatePreview();
+  saveToLocalStorage();
+}
+
+// ==================== 头图上传 ====================
+function handleHeaderUpload(event) {
+  var file = event.target.files[0];
+  if (!file) return;
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    state.headerImage = e.target.result;
+    var preview = document.getElementById("headerPreview");
+    preview.src = e.target.result;
+    preview.style.display = "block";
+    document.getElementById("headerUpload").classList.add("has-file");
+    autoExtractColor();
+    updatePreview();
+    saveToLocalStorage();
+  };
+  reader.readAsDataURL(file);
+}
+
+// ==================== 背景色 ====================
+function onBgColorChange() {
+  var val = document.getElementById("bgColor").value.toUpperCase();
+  state.bgColor = val;
+  document.getElementById("bgColorHex").value = val;
+  updatePreview();
+  saveToLocalStorage();
+}
+
+function onBgColorHexChange() {
+  var val = document.getElementById("bgColorHex").value.trim();
+  if (val.charAt(0) !== "#") val = "#" + val;
+  if (/^#[0-9A-Fa-f]{6}$/.test(val)) {
+    state.bgColor = val.toUpperCase();
+    document.getElementById("bgColor").value = val;
+    document.getElementById("bgColorHex").value = val.toUpperCase();
+    updatePreview();
+    saveToLocalStorage();
+  }
+}
+
+function autoExtractColor() {
+  if (!state.headerImage) {
+    showToast("请先上传头图", "error");
+    return;
+  }
+  var img = new Image();
+  img.onload = function() {
+    var canvas = document.createElement("canvas");
+    var scale = Math.min(1, 100 / Math.max(img.width, img.height));
+    canvas.width = Math.floor(img.width * scale);
+    canvas.height = Math.floor(img.height * scale);
+    var ctx = canvas.getContext("2d");
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+    var data = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+    var r = 0, g = 0, b = 0, count = 0;
+    var step = 5;
+    for (var y = 0; y < canvas.height; y += step) {
+      for (var x = 0; x < canvas.width; x += step) {
+        var idx = (y * canvas.width + x) * 4;
+        r += data[idx];
+        g += data[idx + 1];
+        b += data[idx + 2];
+        count++;
+      }
+    }
+    r = Math.round(r / count);
+    g = Math.round(g / count);
+    b = Math.round(b / count);
+    var hex = "#" + [r, g, b].map(function(v) { return v.toString(16).padStart(2, "0"); }).join("").toUpperCase();
+    state.bgColor = hex;
+    document.getElementById("bgColor").value = hex;
+    document.getElementById("bgColorHex").value = hex;
+    updatePreview();
+    saveToLocalStorage();
+    showToast("已自动提取头图主色：" + hex);
+  };
+  img.src = state.headerImage;
+}
+
+// ==================== 素材管理 ====================
+function addMaterial() {
+  var material = { id: Date.now(), image: "" };
+  state.materials.push(material);
+  renderMaterials();
+}
+
+function removeMaterial(id) {
+  state.materials = state.materials.filter(function(m) { return m.id !== id; });
+  renderMaterials();
+  updatePreview();
+  saveToLocalStorage();
+}
+
+function handleMaterialUpload(event, id) {
+  var file = event.target.files[0];
+  if (!file) return;
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    var material = state.materials.find(function(m) { return m.id === id; });
+    if (material) {
+      material.image = e.target.result;
+      renderMaterials();
+      updatePreview();
+      saveToLocalStorage();
+    }
+  };
+  reader.readAsDataURL(file);
+}
+
+function renderMaterials() {
+  var container = document.getElementById("materialList");
+  container.innerHTML = "";
+  state.materials.forEach(function(material) {
+    var div = document.createElement("div");
+    div.className = "material-item";
+    div.innerHTML = `
+      <div class="material-item-header">
+        <span class="material-item-title">素材图片</span>
+        <button class="material-item-del" onclick="removeMaterial(${material.id})">✕</button>
+      </div>
+      <div class="upload-zone ${material.image ? 'has-file' : ''}" onclick="document.getElementById('materialInput${material.id}').click()">
+        <div class="upload-icon">🎨</div>
+        <div class="upload-text">点击或拖拽上传素材图片</div>
+        <div class="upload-size">建议尺寸：606 x 360 px</div>
+        ${material.image ? `<img class="upload-preview" src="${material.image}" style="display:block">` : ''}
+        <input type="file" id="materialInput${material.id}" accept="image/*" onchange="handleMaterialUpload(event, ${material.id})">
+      </div>
+    `;
+    container.appendChild(div);
+  });
+}
+
+// ==================== 玩法模块管理 ====================
+function addPlayModule() {
+  state.playModules.push(createEmptyPlayModule());
+  renderPlayModules();
+}
+
+function removePlayModule(id) {
+  if (state.playModules.length <= 1) {
+    showToast("至少保留一个玩法模块", "error");
+    return;
+  }
+  state.playModules = state.playModules.filter(function(m) { return m.id !== id; });
+  renderPlayModules();
+  updatePreview();
+  saveToLocalStorage();
+}
+
+function renderPlayModules() {
+  var container = document.getElementById("playModuleList");
+  container.innerHTML = "";
+  state.playModules.forEach(function(module, index) {
+    var div = document.createElement("div");
+    div.className = "play-module";
+    
+    // 判断是否为抽奖类型
+    var isLottery = module.playType === "lottery";
+    
+    div.innerHTML = `
+      <div class="play-module-header">
+        <span class="play-module-title">玩法模块 ${index + 1}</span>
+        <button class="play-module-del" onclick="removePlayModule(${module.id})">✕</button>
+      </div>
+      
+      <div class="form-group">
+        <div class="form-label">标题</div>
+        <input class="text-input" placeholder="请输入玩法标题" value="${module.title || ''}" oninput="onPlayModuleTitleChange(${module.id}, this.value)">
+      </div>
+      
+      <div class="form-group">
+        <div class="form-label">副标题</div>
+        <input class="text-input" placeholder="请输入玩法副标题" value="${module.subtitle || ''}" oninput="onPlayModuleSubtitleChange(${module.id}, this.value)">
+      </div>
+      
+      <div class="form-group">
+        <div class="form-label"><span class="required">*</span> 玩法类型</div>
+        <select class="select-box" onchange="onPlayTypeChange(${module.id}, this.value)">
+          <option value="">请选择玩法类型</option>
+          <option value="claim" ${module.playType === 'claim' ? 'selected' : ''}>🎁 领取</option>
+          <option value="lottery" ${module.playType === 'lottery' ? 'selected' : ''}>🎰 抽奖</option>
+        </select>
+      </div>
+      
+      ${isLottery ? `
+      <div class="play-module-condition">
+        <div class="form-label">获取抽奖机会条件</div>
+        <input class="text-input" placeholder="如：用户每日登录游戏" value="${module.condition || ''}" oninput="onPlayModuleConditionChange(${module.id}, this.value)">
+      </div>
+      ` : ''}
+      
+      <div class="gift-list" id="giftList${module.id}"></div>
+      <div class="add-btn" onclick="addGift(${module.id})">+ 添加福利</div>
+    `;
+    container.appendChild(div);
+    
+    // 渲染该模块的福利列表
+    renderGifts(module.id);
+  });
+}
+
+// ==================== 玩法模块字段变更 ====================
+function onPlayModuleTitleChange(moduleId, value) {
+  var module = state.playModules.find(function(m) { return m.id === moduleId; });
+  if (module) {
+    module.title = value;
+    updatePreview();
+    saveToLocalStorage();
+  }
+}
+
+function onPlayModuleSubtitleChange(moduleId, value) {
+  var module = state.playModules.find(function(m) { return m.id === moduleId; });
+  if (module) {
+    module.subtitle = value;
+    updatePreview();
+    saveToLocalStorage();
+  }
+}
+
+function onPlayModuleConditionChange(moduleId, value) {
+  var module = state.playModules.find(function(m) { return m.id === moduleId; });
+  if (module) {
+    module.condition = value;
+    updatePreview();
+    saveToLocalStorage();
+  }
+}
+
+// ==================== 福利管理 ====================
+function addGift(moduleId) {
+  var module = state.playModules.find(function(m) { return m.id === moduleId; });
+  if (module) {
+    module.gifts.push(createEmptyGift());
+    renderGifts(moduleId);
+  }
+}
+
+function removeGift(moduleId, giftId) {
+  var module = state.playModules.find(function(m) { return m.id === moduleId; });
+  if (module) {
+    if (module.gifts.length <= 1) {
+      showToast("每个玩法模块至少保留一个福利", "error");
+      return;
+    }
+    module.gifts = module.gifts.filter(function(g) { return g.id !== giftId; });
+    renderGifts(moduleId);
+    updatePreview();
+    saveToLocalStorage();
+  }
+}
+
+function onPlayTypeChange(moduleId, value) {
+  var module = state.playModules.find(function(m) { return m.id === moduleId; });
+  if (module) {
+    module.playType = value;
+    renderPlayModules(); // 重新渲染以显示/隐藏任务条件
+    updatePreview();
+    saveToLocalStorage();
+  }
+}
+
+function onGiftPackChange(moduleId, giftId, value) {
+  var module = state.playModules.find(function(m) { return m.id === moduleId; });
+  if (module) {
+    var gift = module.gifts.find(function(g) { return g.id === giftId; });
+    if (gift) {
+      gift.giftPackId = value;
+      if (value) {
+        var data = MOCK_GIFT_DATA[value];
+        if (data) {
+          gift.giftTitle = data.title;
+          gift.giftIcon = data.icon;
+        }
+      } else {
+        gift.giftTitle = "";
+        gift.giftIcon = "";
+      }
+      renderGifts(moduleId);
+      updatePreview();
+      saveToLocalStorage();
+    }
+  }
+}
+
+function onGiftConditionChange(moduleId, giftId, value) {
+  var module = state.playModules.find(function(m) { return m.id === moduleId; });
+  if (module) {
+    var gift = module.gifts.find(function(g) { return g.id === giftId; });
+    if (gift) {
+      gift.condition = value;
+      updatePreview();
+      saveToLocalStorage();
+    }
+  }
+}
+
+function onGiftProbabilityChange(moduleId, giftId, value) {
+  var module = state.playModules.find(function(m) { return m.id === moduleId; });
+  if (module) {
+    var gift = module.gifts.find(function(g) { return g.id === giftId; });
+    if (gift) {
+      gift.probability = value;
+      updatePreview();
+      saveToLocalStorage();
+    }
+  }
+}
+
+function renderGifts(moduleId) {
+  var module = state.playModules.find(function(m) { return m.id === moduleId; });
+  if (!module) return;
+  
+  var container = document.getElementById("giftList" + moduleId);
+  if (!container) {
+    // 如果容器还没创建，等待一下
+    setTimeout(function() { renderGifts(moduleId); }, 100);
+    return;
+  }
+  
+  container.innerHTML = "";
+  var isLottery = module.playType === "lottery";
+  
+  module.gifts.forEach(function(gift, index) {
+    var div = document.createElement("div");
+    div.className = "gift-item";
+    div.innerHTML = `
+      <div class="gift-item-header">
+        <span class="gift-item-title">福利 ${index + 1}</span>
+        <button class="gift-item-del" onclick="removeGift(${moduleId}, ${gift.id})">✕</button>
+      </div>
+      <div class="form-group" style="margin-bottom:8px;">
+        <select class="select-box" onchange="onGiftPackChange(${moduleId}, ${gift.id}, this.value)">
+          <option value="">请选择礼包 ID</option>
+          ${generateGiftPackOptions(gift.giftPackId)}
+        </select>
+        ${gift.giftPackId ? `
+          <div class="gift-info" style="margin-top:8px;">
+            <div class="gift-icon">${gift.giftIcon || '🎁'}</div>
+            <div class="gift-detail">
+              <div class="gift-title">${gift.giftTitle || '礼包名称'}</div>
+              <div class="gift-id">ID: ${gift.giftPackId}</div>
+            </div>
+          </div>
+        ` : ''}
+      </div>
+      
+      ${isLottery ? `
+        <!-- 抽奖类型：显示概率输入框 -->
+        <div class="gift-probability">
+          <div class="gift-probability-label">概率（如：10% 或 0.1）</div>
+          <input class="text-input" placeholder="如：10%" value="${gift.probability || ''}" oninput="onGiftProbabilityChange(${moduleId}, ${gift.id}, this.value)">
+        </div>
+      ` : `
+        <!-- 领取类型：每个福利一个任务条件 -->
+        <div class="gift-condition">
+          <div class="gift-condition-label">任务条件（每个福利只能设置一个条件）</div>
+          <input class="text-input" placeholder="如：用户每日登录游戏" value="${gift.condition || ''}" oninput="onGiftConditionChange(${moduleId}, ${gift.id}, this.value)">
+        </div>
+      `}
+    `;
+    container.appendChild(div);
+  });
+}
+
+function generateGiftPackOptions(selectedId) {
+  var options = [];
+  for (var i = 1111; i <= 9999; i += 111) {
+    options.push(`<option value="${i}" ${selectedId == i ? 'selected' : ''}>${i}</option>`);
+  }
+  return options.join('');
+}
+
+// ==================== 礼包数据 ====================
+var MOCK_GIFT_DATA = {};
+var giftIcons = ["🎁", "🎊", "🎯", "🏆", "🎮", "🎲", "🇦🇺", "🧧", "🎴", "💰"];
+var giftTitles = ["新手福利大礼包", "每日签到奖励", "限时特权礼包", "VIP专属礼包", "节日特惠礼包", "回归奖励礼包", "首充福利礼包", "等级奖励礼包", "活跃度礼包", "周年庆典礼包"];
+
+for (var i = 1111; i <= 9999; i += 111) {
+  (function(id) {
+    MOCK_GIFT_DATA[id] = {
+      title: giftTitles[Math.floor(Math.random() * giftTitles.length)] + "（" + id + "）",
+      icon: giftIcons[Math.floor(Math.random() * giftIcons.length)],
+    };
+  })(i);
+}
+
+function initGiftPackOptions() {
+  // 不再需要预先填充，改在渲染时动态生成
+}
+
+// ==================== 预览更新 ====================
+function updatePreview() {
+  var container = document.getElementById("previewContent");
+  var empty = document.getElementById("pvEmpty");
+  
+  var hasContent = state.headerImage || 
+                   state.materials.some(function(m) { return m.image; }) || 
+                   state.playModules.some(function(m) { return m.playType || m.title || m.gifts.some(function(g) { return g.giftPackId || g.condition || g.probability; }); });
+  
+  if (!hasContent) {
+    container.innerHTML = "";
+    container.appendChild(empty);
+    empty.style.display = "block";
+    return;
+  }
+  
+  empty.style.display = "none";
+  var html = "";
+  
+  // 头图
+  if (state.headerImage) {
+    html += '<img class="pv-header" src="' + state.headerImage + '" alt="头图" style="background:' + state.bgColor + '">';
+  }
+  
+  html += '<div class="pv-body" style="background:' + state.bgColor + '">';
+  
+  // 素材图片
+  state.materials.forEach(function(material) {
+    if (material.image) {
+      html += '<img class="pv-module-img" src="' + material.image + '" alt="素材模块">';
+    }
+  });
+  
+  // 玩法模块
+  state.playModules.forEach(function(module) {
+    if (module.playType || module.title) {
+      var isClaim = module.playType === "claim";
+      
+      html += '<div class="pv-play-area">';
+      
+      // 显示标题和副标题
+      if (module.title) {
+        html += '<div class="pv-play-title">' + module.title + '</div>';
+      }
+      if (module.subtitle) {
+        html += '<div class="pv-play-subtitle">' + module.subtitle + '</div>';
+      }
+      
+      // 抽奖模块显示获取抽奖机会的条件
+      if (module.playType === "lottery" && module.condition) {
+        html += '<div class="pv-conditions" style="margin-bottom:12px;">';
+        html += '<div style="font-size:13px;color:#555;margin-bottom:8px;font-weight:500">📋 获取抽奖机会条件</div>';
+        html += '<span class="pv-condition-tag">' + module.condition + '</span>';
+        html += '</div>';
+      }
+      
+      // 渲染福利
+      module.gifts.forEach(function(gift) {
+        if (gift.giftPackId || (module.playType === "claim" && gift.condition)) {
+          html += '<div class="pv-gift-box" style="margin:12px auto;">';
+          html += '<div class="pv-gift-icon">' + (gift.giftIcon || "🎁") + '</div>';
+          html += '<div class="pv-gift-name">' + (gift.giftTitle || "福利礼包") + '</div>';
+          
+          // 抽奖类型显示概率
+          if (module.playType === "lottery" && gift.probability) {
+            html += '<div class="pv-gift-probability">概率：' + gift.probability + '</div>';
+          }
+          
+          html += '</div>';
+          
+          // 领取类型显示每个福利的任务条件
+          if (module.playType === "claim" && gift.condition) {
+            html += '<div class="pv-conditions">';
+            html += '<div style="font-size:13px;color:#555;margin-bottom:8px;font-weight:500">📋 任务条件</div>';
+            html += '<span class="pv-condition-tag">' + gift.condition + '</span>';
+            html += '</div>';
+          }
+        }
+      });
+      
+      // 按钮
+      html += '<div class="pv-btn ' + (isClaim ? "claim" : "lottery") + '">' + (isClaim ? "🎁 立即领取" : "🎰 立即抽奖") + '</div>';
+      
+      html += '</div>';
+    }
+  });
+  
+  html += '</div>';
+  container.innerHTML = html;
+}
+
+// ==================== 配置导入导出 ====================
+function exportConfig() {
+  var config = {
+    platform: state.platform,
+    bgColor: state.bgColor,
+    playModules: state.playModules.map(function(m) {
+      return {
+        title: m.title,
+        subtitle: m.subtitle,
+        playType: m.playType,
+        condition: m.condition,
+        gifts: m.gifts.map(function(g) {
+          return {
+            giftPackId: g.giftPackId,
+            giftTitle: g.giftTitle,
+            giftIcon: g.giftIcon,
+            condition: g.condition,
+            probability: g.probability
+          };
+        })
+      };
+    }),
+    _note: "头图/素材图片需在导入后重新上传",
+  };
+  var blob = new Blob([JSON.stringify(config, null, 2)], { type: "application/json" });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement("a");
+  a.href = url;
+  a.download = "h5-activity-config-" + Date.now() + ".json";
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast("配置已导出");
+}
+
+function importConfig() {
+  var input = document.createElement("input");
+  input.type = "file";
+  input.accept = ".json";
+  input.onchange = function(e) {
+    var file = e.target.files[0];
+    if (!file) return;
+    var reader = new FileReader();
+    reader.onload = function(ev) {
+      try {
+        var config = JSON.parse(ev.target.result);
+        applyConfig(config);
+        showToast("配置已导入，请重新上传图片");
+      } catch (err) {
+        showToast("JSON 格式错误", "error");
+      }
+    };
+    reader.readAsText(file);
+  };
+  input.click();
+}
+
+function applyConfig(config) {
+  state.platform = config.platform || "mobile";
+  state.bgColor = config.bgColor || "#F5F7FA";
+  state.playModules = (config.playModules || []).map(function(m) {
+    return {
+      id: Date.now() + Math.random(),
+      title: m.title || "",
+      subtitle: m.subtitle || "",
+      playType: m.playType || "",
+      condition: m.condition || "",
+      gifts: (m.gifts || []).map(function(g) {
+        return {
+          id: Date.now() + Math.random(),
+          giftPackId: g.giftPackId || "",
+          giftTitle: g.giftTitle || "",
+          giftIcon: g.giftIcon || "",
+          condition: g.condition || "",
+          probability: g.probability || ""
+        };
+      })
+    };
+  });
+  
+  if (state.playModules.length === 0) {
+    state.playModules.push(createEmptyPlayModule());
+  }
+  
+  selectPlatform(state.platform, document.querySelectorAll("#platformGroup .radio-item")[state.platform === "mobile" ? 0 : 1]);
+  document.getElementById("bgColor").value = state.bgColor;
+  document.getElementById("bgColorHex").value = state.bgColor;
+  
+  renderPlayModules();
+  updatePreview();
+  saveToLocalStorage();
+}
+
+// ==================== 重置 ====================
+function resetConfig() {
+  if (!confirm("⚠️ 确定要重置所有配置吗？")) return;
+  state = {
+    platform: "mobile",
+    headerImage: "",
+    materials: [],
+    bgColor: "#F5F7FA",
+    playModules: [createEmptyPlayModule()]
+  };
+  
+  document.getElementById("headerPreview").style.display = "none";
+  document.getElementById("headerPreview").src = "";
+  document.getElementById("headerUpload").classList.remove("has-file");
+  document.getElementById("bgColor").value = "#F5F7FA";
+  document.getElementById("bgColorHex").value = "#F5F7FA";
+  
+  renderMaterials();
+  renderPlayModules();
+  updatePreview();
+  saveToLocalStorage();
+  showToast("已重置所有配置");
+}
+
+// ==================== 本地存储 ====================
+function saveToLocalStorage() {
+  var data = {
+    platform: state.platform,
+    bgColor: state.bgColor,
+    playModules: state.playModules.map(function(m) {
+      return {
+        title: m.title,
+        subtitle: m.subtitle,
+        playType: m.playType,
+        condition: m.condition,
+        gifts: m.gifts.map(function(g) {
+          return {
+            giftPackId: g.giftPackId,
+            giftTitle: g.giftTitle,
+            giftIcon: g.giftIcon,
+            condition: g.condition,
+            probability: g.probability
+          };
+        })
+      };
+    }),
+  };
+  localStorage.setItem("h5_config_meta", JSON.stringify(data));
+  if (state.headerImage) localStorage.setItem("h5_config_header", state.headerImage);
+  // 保存素材图片
+  state.materials.forEach(function(m, idx) {
+    if (m.image) localStorage.setItem("h5_config_material_" + idx, m.image);
+  });
+}
+
+function loadFromLocalStorage() {
+  try {
+    var meta = JSON.parse(localStorage.getItem("h5_config_meta"));
+    if (!meta) return;
+    
+    state.platform = meta.platform || "mobile";
+    state.bgColor = meta.bgColor || "#F5F7FA";
+    state.playModules = (meta.playModules || []).map(function(m) {
+      return {
+        id: Date.now() + Math.random(),
+        title: m.title || "",
+        subtitle: m.subtitle || "",
+        playType: m.playType || "",
+        condition: m.condition || "",
+        gifts: (m.gifts || []).map(function(g) {
+          return {
+            id: Date.now() + Math.random(),
+            giftPackId: g.giftPackId || "",
+            giftTitle: g.giftTitle || "",
+            giftIcon: g.giftIcon || "",
+            condition: g.condition || "",
+            probability: g.probability || ""
+          };
+        })
+      };
+    });
+    
+    if (state.playModules.length === 0) {
+      state.playModules.push(createEmptyPlayModule());
+    }
+    
+    state.headerImage = localStorage.getItem("h5_config_header") || "";
+    
+    selectPlatform(state.platform, document.querySelectorAll("#platformGroup .radio-item")[state.platform === "mobile" ? 0 : 1]);
+    document.getElementById("bgColor").value = state.bgColor;
+    document.getElementById("bgColorHex").value = state.bgColor;
+    
+    if (state.headerImage) {
+      document.getElementById("headerPreview").src = state.headerImage;
+      document.getElementById("headerPreview").style.display = "block";
+      document.getElementById("headerUpload").classList.add("has-file");
+    }
+    
+    renderPlayModules();
+    updatePreview();
+  } catch (e) {}
+}
+
+// ==================== 提示消息 ====================
+function showToast(msg, type) {
+  type = type || "success";
+  var toast = document.getElementById("toast");
+  toast.textContent = msg;
+  toast.className = "toast show toast-" + type;
+  setTimeout(function() { toast.classList.remove("show"); }, 2500);
+}
+</script>
+</body>
+</html>
