@@ -235,6 +235,24 @@ textarea.text-input { min-height: 80px; resize: vertical; font-family: inherit; 
 
 .play-module-condition { margin-top: 12px; padding: 12px; background: #F5F7FA; border-radius: 8px; }
 
+.date-range-row { display: flex; gap: 8px; align-items: center; }
+
+.date-range-row .text-input { flex: 1; }
+
+.date-range-row .date-sep { color: #888; font-size: 13px; }
+
+.condition-parsed { margin-top: 8px; padding: 10px 12px; background: #F0F7FF; border: 1px solid #CFE3F9; border-radius: 8px; font-size: 12px; color: #185FA5; display: none; }
+
+.condition-parsed.show { display: block; }
+
+.condition-parsed .parsed-title { font-weight: 600; margin-bottom: 4px; display: flex; align-items: center; gap: 4px; }
+
+.condition-parsed .parsed-item { color: #555; margin-top: 2px; }
+
+.condition-parsed .parsed-item strong { color: #185FA5; }
+
+.ai-hint { font-size: 11px; color: #0F6E56; margin-top: 4px; display: flex; align-items: center; gap: 4px; }
+
 /* 福利样式 */
 .gift-list { display: flex; flex-direction: column; gap: 12px; }
 
@@ -273,6 +291,27 @@ textarea.text-input { min-height: 80px; resize: vertical; font-family: inherit; 
 <div class="main">
   <!-- 左侧配置面板 -->
   <div class="config-panel">
+    <!-- 活动基本信息 -->
+    <div class="card">
+      <div class="card-title"><span class="icon" style="background:#FFF4E5;color:#B67700">&#128197;</span> 活动基本信息</div>
+
+      <div class="form-group">
+        <div class="form-label"><span class="required">*</span> 活动时间</div>
+        <div class="date-range-row">
+          <input class="text-input" type="date" id="activityStartDate" onchange="onActivityDateChange()">
+          <span class="date-sep">至</span>
+          <input class="text-input" type="date" id="activityEndDate" onchange="onActivityDateChange()">
+        </div>
+        <div class="form-tip">设置活动的开始和结束日期</div>
+      </div>
+
+      <div class="form-group">
+        <div class="form-label"><span class="required">*</span> 游戏 AppID</div>
+        <input class="text-input" id="gameAppId" placeholder="请输入游戏 AppID，如：100123" oninput="onGameAppIdChange(this.value)">
+        <div class="form-tip">用于绑定目标游戏，并识别玩家行为类任务条件</div>
+      </div>
+    </div>
+
     <!-- 端类型选择 -->
     <div class="card">
       <div class="card-title"><span class="icon" style="background:#E6F1FB;color:#185FA5">&#128241;</span> 选择端类型</div>
@@ -360,6 +399,9 @@ let state = {
   headerImage: "",
   materials: [], // {id, image}
   bgColor: "#F5F7FA",
+  activityStartDate: "", // 活动开始日期 YYYY-MM-DD
+  activityEndDate: "",   // 活动结束日期 YYYY-MM-DD
+  gameAppId: "",         // 游戏 AppID
   playModules: [createEmptyPlayModule()] // 玩法模块数组
 };
 
@@ -370,6 +412,7 @@ function createEmptyPlayModule() {
     subtitle: "", // 副标题
     playType: "",
     condition: "", // 任务条件（抽奖模块用这个获取抽奖机会）
+    conditionText: "", // 任务文案（抽奖模块级）
     gifts: [createEmptyGift()] // 每个玩法模块至少有一个福利
   };
 }
@@ -381,6 +424,7 @@ function createEmptyGift() {
     giftTitle: "",
     giftIcon: "",
     condition: "", // 任务条件（领取类型每个福利一个条件）
+    conditionText: "", // 任务文案（领取类型每个福利一个文案）
     probability: "" // 概率（抽奖类型使用）
   };
 }
@@ -392,6 +436,162 @@ window.addEventListener("DOMContentLoaded", function() {
   loadFromLocalStorage();
   updatePreview();
 });
+
+// ==================== 活动基本信息 ====================
+function onActivityDateChange() {
+  state.activityStartDate = document.getElementById("activityStartDate").value || "";
+  state.activityEndDate = document.getElementById("activityEndDate").value || "";
+  updatePreview();
+  saveToLocalStorage();
+}
+
+function onGameAppIdChange(value) {
+  state.gameAppId = (value || "").trim();
+  updatePreview();
+  saveToLocalStorage();
+}
+
+// ==================== 自然语言任务条件解析 ====================
+// 目标：用户输入"用户在5.1-5.5间每日登录游戏"之类的自然语言后，
+// 自动识别出：动作（登录/充值/分享/在线/邀请/完成任务…），频次（每日/累计/单次），
+// 时间范围（5.1-5.5），并生成结构化条件字符串 + 推荐任务文案。
+
+var ACTION_DICT = [
+  { kw: ["登录", "登陆", "登入", "登录游戏"], code: "login",    label: "登录游戏" },
+  { kw: ["充值", "付费", "氪金", "消费"],     code: "recharge", label: "游戏充值" },
+  { kw: ["分享", "转发"],                     code: "share",    label: "分享活动" },
+  { kw: ["邀请", "拉新"],                     code: "invite",   label: "邀请好友" },
+  { kw: ["在线", "游玩", "游戏时长"],         code: "online",   label: "游戏在线" },
+  { kw: ["完成任务", "任务", "做任务"],       code: "task",     label: "完成任务" },
+  { kw: ["下载", "安装"],                     code: "download", label: "下载游戏" },
+  { kw: ["注册", "创角", "创建角色"],         code: "register", label: "注册创角" },
+  { kw: ["签到"],                             code: "signin",   label: "每日签到" },
+  { kw: ["分享", "关注"],                     code: "follow",   label: "关注游戏" }
+];
+
+var FREQ_DICT = [
+  { kw: ["每日", "每天", "每日一次"], code: "daily",  label: "每日" },
+  { kw: ["累计", "总共", "一共"],     code: "total",  label: "累计" },
+  { kw: ["每周"],                     code: "weekly", label: "每周" },
+  { kw: ["单次", "一次"],             code: "once",   label: "单次" }
+];
+
+function _pad2(n) { return (n < 10 ? "0" : "") + n; }
+
+// 将 "5.1"、"5-1"、"5/1"、"5月1日" 等标准化为 "YYYY-MM-DD"
+function _normalizeDate(raw, year) {
+  if (!raw) return "";
+  var y = year || new Date().getFullYear();
+  var m = raw.match(/^(\d{4})[.\-\/年](\d{1,2})[.\-\/月](\d{1,2})/);
+  if (m) return m[1] + "-" + _pad2(+m[2]) + "-" + _pad2(+m[3]);
+  m = raw.match(/^(\d{1,2})[.\-\/月](\d{1,2})/);
+  if (m) return y + "-" + _pad2(+m[1]) + "-" + _pad2(+m[2]);
+  return "";
+}
+
+// 从文本中抽取日期范围，返回 { start, end } (YYYY-MM-DD) 或 null
+function _extractDateRange(text) {
+  if (!text) return null;
+  // 优先匹配 "5.1-5.5" / "5.1到5.5" / "5月1日至5月5日" 这样的区间
+  var re = /(\d{4}[.\-\/年]\d{1,2}[.\-\/月]\d{1,2}日?|\d{1,2}[.\-\/月]\d{1,2}日?)\s*[-~至到]+\s*(\d{4}[.\-\/年]\d{1,2}[.\-\/月]\d{1,2}日?|\d{1,2}[.\-\/月]\d{1,2}日?)/;
+  var m = text.match(re);
+  if (m) {
+    return { start: _normalizeDate(m[1]), end: _normalizeDate(m[2]) };
+  }
+  // 单一日期
+  var single = text.match(/(\d{4}[.\-\/年]\d{1,2}[.\-\/月]\d{1,2}日?|\d{1,2}[.\-\/月]\d{1,2}日?)/);
+  if (single) {
+    var d = _normalizeDate(single[1]);
+    return { start: d, end: d };
+  }
+  return null;
+}
+
+// 抽取数量，例如"充值100元"/"累计3次"/"登录5天"
+function _extractAmount(text) {
+  var m = text.match(/(\d+)\s*(元|块|rmb|RMB|次|天|日|小时|分钟|人)/);
+  if (m) return { num: +m[1], unit: m[2] };
+  return null;
+}
+
+function _findAction(text) {
+  for (var i = 0; i < ACTION_DICT.length; i++) {
+    var a = ACTION_DICT[i];
+    for (var j = 0; j < a.kw.length; j++) {
+      if (text.indexOf(a.kw[j]) >= 0) return a;
+    }
+  }
+  return null;
+}
+
+function _findFreq(text) {
+  for (var i = 0; i < FREQ_DICT.length; i++) {
+    var f = FREQ_DICT[i];
+    for (var j = 0; j < f.kw.length; j++) {
+      if (text.indexOf(f.kw[j]) >= 0) return f;
+    }
+  }
+  return null;
+}
+
+// 解析入口：text -> { condition, text, parsed }
+// condition: 结构化条件字符串（后续对接配置中心可换成 JSON）
+// text:      推荐任务文案
+// parsed:    解析出的各个字段（用于 UI 展示）
+function parseNaturalCondition(text) {
+  if (!text || !text.trim()) return null;
+  var t = text.trim();
+  var action = _findAction(t);
+  var freq = _findFreq(t);
+  var range = _extractDateRange(t);
+  var amount = _extractAmount(t);
+  if (!action && !freq && !range && !amount) return null;
+
+  var appId = state.gameAppId || "";
+  var parts = [];
+  if (appId) parts.push("app=" + appId);
+  if (action) parts.push("action=" + action.code);
+  if (freq) parts.push("freq=" + freq.code);
+  if (amount) parts.push("amount=" + amount.num + amount.unit);
+  if (range && range.start && range.end) {
+    parts.push("date=" + range.start + "~" + range.end);
+  }
+  var condition = parts.join(" & ");
+
+  // 推荐任务文案
+  var copy = "";
+  if (freq) copy += freq.label;
+  if (action) copy += (copy ? "" : "") + action.label;
+  if (amount) copy += "满" + amount.num + amount.unit;
+  if (!copy) copy = t; // 兜底
+  if (range && range.start && range.end) {
+    copy = "【" + range.start.slice(5) + " ~ " + range.end.slice(5) + "】" + copy;
+  }
+
+  return {
+    condition: condition,
+    text: copy,
+    parsed: {
+      action: action ? action.label : "",
+      freq: freq ? freq.label : "",
+      amount: amount ? (amount.num + amount.unit) : "",
+      range: range ? (range.start + " ~ " + range.end) : "",
+      appId: appId
+    }
+  };
+}
+
+function _renderParsedBlock(parsed) {
+  if (!parsed) return "";
+  var items = [];
+  if (parsed.action) items.push('<div class="parsed-item">• 动作：<strong>' + parsed.action + '</strong></div>');
+  if (parsed.freq)   items.push('<div class="parsed-item">• 频次：<strong>' + parsed.freq + '</strong></div>');
+  if (parsed.amount) items.push('<div class="parsed-item">• 数量：<strong>' + parsed.amount + '</strong></div>');
+  if (parsed.range)  items.push('<div class="parsed-item">• 时间：<strong>' + parsed.range + '</strong></div>');
+  if (parsed.appId)  items.push('<div class="parsed-item">• AppID：<strong>' + parsed.appId + '</strong></div>');
+  return items.join("");
+}
+
 
 // ==================== 端类型选择 ====================
 function selectPlatform(platform, el) {
@@ -541,6 +741,8 @@ function renderMaterials() {
 function addPlayModule() {
   state.playModules.push(createEmptyPlayModule());
   renderPlayModules();
+  updatePreview();
+  saveToLocalStorage();
 }
 
 function removePlayModule(id) {
@@ -591,8 +793,16 @@ function renderPlayModules() {
       
       ${isLottery ? `
       <div class="play-module-condition">
-        <div class="form-label">获取抽奖机会条件</div>
-        <input class="text-input" placeholder="如：用户每日登录游戏" value="${module.condition || ''}" oninput="onPlayModuleConditionChange(${module.id}, this.value)">
+        <div class="form-label">获取抽奖机会的任务条件</div>
+        <input class="text-input" placeholder="如：用户在5.1-5.5间每日登录游戏" value="${module.condition || ''}" oninput="onPlayModuleConditionChange(${module.id}, this.value)">
+        <div class="ai-hint">&#129302; 可用自然语言描述，系统会自动识别条件配置并推荐任务文案</div>
+        <div class="condition-parsed ${module.condition ? 'show' : ''}" id="parsedPlay${module.id}">
+          <div class="parsed-title">&#9989; 已识别为：</div>
+          <div id="parsedPlayBody${module.id}"></div>
+        </div>
+        <div class="form-label" style="margin-top:10px;">任务文案</div>
+        <input class="text-input" placeholder="展示给用户的任务描述，如：每日登录游戏" value="${module.conditionText || ''}" oninput="onPlayModuleConditionTextChange(${module.id}, this.value)">
+        <div class="form-tip">展示在 H5 活动页"任务列表"中的文案，用户可手动修改</div>
       </div>
       ` : ''}
       
@@ -603,7 +813,46 @@ function renderPlayModules() {
     
     // 渲染该模块的福利列表
     renderGifts(module.id);
+
+    // 渲染玩法模块级的解析结果（抽奖类型）
+    if (isLottery) {
+      refreshPlayModuleParsed(module.id);
+    }
   });
+}
+
+function refreshPlayModuleParsed(moduleId) {
+  var module = state.playModules.find(function(m) { return m.id === moduleId; });
+  if (!module) return;
+  var wrap = document.getElementById("parsedPlay" + moduleId);
+  var body = document.getElementById("parsedPlayBody" + moduleId);
+  if (!wrap || !body) return;
+  var parsed = parseNaturalCondition(module.condition);
+  if (parsed) {
+    body.innerHTML = _renderParsedBlock(parsed.parsed);
+    wrap.classList.add("show");
+  } else {
+    body.innerHTML = "";
+    wrap.classList.remove("show");
+  }
+}
+
+function refreshGiftParsed(moduleId, giftId) {
+  var module = state.playModules.find(function(m) { return m.id === moduleId; });
+  if (!module) return;
+  var gift = module.gifts.find(function(g) { return g.id === giftId; });
+  if (!gift) return;
+  var wrap = document.getElementById("parsedGift" + giftId);
+  var body = document.getElementById("parsedGiftBody" + giftId);
+  if (!wrap || !body) return;
+  var parsed = parseNaturalCondition(gift.condition);
+  if (parsed) {
+    body.innerHTML = _renderParsedBlock(parsed.parsed);
+    wrap.classList.add("show");
+  } else {
+    body.innerHTML = "";
+    wrap.classList.remove("show");
+  }
 }
 
 // ==================== 玩法模块字段变更 ====================
@@ -629,6 +878,24 @@ function onPlayModuleConditionChange(moduleId, value) {
   var module = state.playModules.find(function(m) { return m.id === moduleId; });
   if (module) {
     module.condition = value;
+    var parsed = parseNaturalCondition(value);
+    if (parsed && (!module.conditionText || module._autoText)) {
+      module.conditionText = parsed.text;
+      module._autoText = true;
+      renderPlayModules();
+      return;
+    }
+    refreshPlayModuleParsed(moduleId);
+    updatePreview();
+    saveToLocalStorage();
+  }
+}
+
+function onPlayModuleConditionTextChange(moduleId, value) {
+  var module = state.playModules.find(function(m) { return m.id === moduleId; });
+  if (module) {
+    module.conditionText = value;
+    module._autoText = false; // 用户手动修改后，不再自动覆盖
     updatePreview();
     saveToLocalStorage();
   }
@@ -640,6 +907,8 @@ function addGift(moduleId) {
   if (module) {
     module.gifts.push(createEmptyGift());
     renderGifts(moduleId);
+    updatePreview();
+    saveToLocalStorage();
   }
 }
 
@@ -696,6 +965,29 @@ function onGiftConditionChange(moduleId, giftId, value) {
     var gift = module.gifts.find(function(g) { return g.id === giftId; });
     if (gift) {
       gift.condition = value;
+      var parsed = parseNaturalCondition(value);
+      if (parsed && (!gift.conditionText || gift._autoText)) {
+        gift.conditionText = parsed.text;
+        gift._autoText = true;
+        renderGifts(moduleId);
+        updatePreview();
+        saveToLocalStorage();
+        return;
+      }
+      refreshGiftParsed(moduleId, giftId);
+      updatePreview();
+      saveToLocalStorage();
+    }
+  }
+}
+
+function onGiftConditionTextChange(moduleId, giftId, value) {
+  var module = state.playModules.find(function(m) { return m.id === moduleId; });
+  if (module) {
+    var gift = module.gifts.find(function(g) { return g.id === giftId; });
+    if (gift) {
+      gift.conditionText = value;
+      gift._autoText = false;
       updatePreview();
       saveToLocalStorage();
     }
@@ -762,12 +1054,26 @@ function renderGifts(moduleId) {
         <!-- 领取类型：每个福利一个任务条件 -->
         <div class="gift-condition">
           <div class="gift-condition-label">任务条件（每个福利只能设置一个条件）</div>
-          <input class="text-input" placeholder="如：用户每日登录游戏" value="${gift.condition || ''}" oninput="onGiftConditionChange(${moduleId}, ${gift.id}, this.value)">
+          <input class="text-input" placeholder="如：用户在5.1-5.5间每日登录游戏" value="${gift.condition || ''}" oninput="onGiftConditionChange(${moduleId}, ${gift.id}, this.value)">
+          <div class="ai-hint">&#129302; 可用自然语言描述，系统会自动识别条件配置并推荐任务文案</div>
+          <div class="condition-parsed ${gift.condition ? 'show' : ''}" id="parsedGift${gift.id}">
+            <div class="parsed-title">&#9989; 已识别为：</div>
+            <div id="parsedGiftBody${gift.id}"></div>
+          </div>
+          <div class="gift-condition-label" style="margin-top:10px;">任务文案</div>
+          <input class="text-input" placeholder="展示给用户的任务描述，如：每日登录游戏" value="${gift.conditionText || ''}" oninput="onGiftConditionTextChange(${moduleId}, ${gift.id}, this.value)" data-gift-copy="${gift.id}">
         </div>
       `}
     `;
     container.appendChild(div);
   });
+
+  // 渲染完成后，为领取类型的福利刷新解析结果
+  if (!isLottery) {
+    module.gifts.forEach(function(gift) {
+      refreshGiftParsed(moduleId, gift.id);
+    });
+  }
 }
 
 function generateGiftPackOptions(selectedId) {
@@ -801,8 +1107,9 @@ function updatePreview() {
   var container = document.getElementById("previewContent");
   
   var hasContent = state.headerImage || 
+                   state.activityStartDate || state.activityEndDate || state.gameAppId ||
                    state.materials.some(function(m) { return m.image; }) || 
-                   state.playModules.some(function(m) { return m.playType || m.title || m.gifts.some(function(g) { return g.giftPackId || g.condition || g.probability; }); });
+                   state.playModules.some(function(m) { return m.playType || m.title || m.condition || m.conditionText || m.gifts.some(function(g) { return g.giftPackId || g.condition || g.conditionText || g.probability; }); });
   
   if (!hasContent) {
     container.innerHTML = '<div class="pv-empty">👈 请在左侧配置活动信息<br>配置后将实时预览效果</div>';
@@ -827,6 +1134,18 @@ function updatePreview() {
   }
   
   html += '<div class="pv-body" style="background:' + state.bgColor + '">';
+
+  if (state.activityStartDate || state.activityEndDate || state.gameAppId) {
+    html += '<div class="pv-claim-card">';
+    html += '<div class="pv-claim-title">活动信息</div>';
+    if (state.activityStartDate || state.activityEndDate) {
+      html += '<div class="pv-claim-task"><span class="pv-claim-task-name">活动时间：' + (state.activityStartDate || '--') + ' ~ ' + (state.activityEndDate || '--') + '</span></div>';
+    }
+    if (state.gameAppId) {
+      html += '<div class="pv-claim-task"><span class="pv-claim-task-name">游戏 AppID：' + state.gameAppId + '</span></div>';
+    }
+    html += '</div>';
+  }
   
   // 玩法模块
   state.playModules.forEach(function(module) {
@@ -857,11 +1176,11 @@ function updatePreview() {
         // 抽奖按钮
         html += '<div class="pv-lottery-btn">🎰 立即抽奖</div>';
         // 任务列表（获取抽奖机会的条件）
-        if (module.condition) {
+        if (module.condition || module.conditionText) {
           html += '<div class="pv-lottery-tasks">';
           html += '<div class="pv-lottery-tasks-title">📋 获取抽奖机会</div>';
           html += '<div class="pv-lottery-task-item">';
-          html += '<span class="task-name">' + module.condition + '</span>';
+          html += '<span class="task-name">' + (module.conditionText || module.condition) + '</span>';
           html += '<span class="task-go">去完成 ›</span>';
           html += '</div>';
           html += '</div>';
@@ -870,7 +1189,7 @@ function updatePreview() {
       } else {
         // 领取模块卡片
         module.gifts.forEach(function(gift) {
-          if (gift.giftPackId || gift.condition) {
+          if (gift.giftPackId || gift.condition || gift.conditionText) {
             html += '<div class="pv-claim-card">';
             if (module.title) {
               html += '<div class="pv-claim-title">' + module.title + '</div>';
@@ -889,9 +1208,9 @@ function updatePreview() {
             // 领取按钮
             html += '<div class="pv-claim-btn">🎁 立即领取</div>';
             // 任务条件
-            if (gift.condition) {
+            if (gift.condition || gift.conditionText) {
               html += '<div class="pv-claim-task">';
-              html += '<span class="pv-claim-task-name">' + gift.condition + '</span>';
+              html += '<span class="pv-claim-task-name">' + (gift.conditionText || gift.condition) + '</span>';
               html += '<span class="pv-claim-task-go">去完成 ›</span>';
               html += '</div>';
             }
@@ -923,24 +1242,30 @@ function exportConfig() {
   var config = {
     platform: state.platform,
     bgColor: state.bgColor,
+    activityStartDate: state.activityStartDate,
+    activityEndDate: state.activityEndDate,
+    gameAppId: state.gameAppId,
+    materialCount: state.materials.length,
     playModules: state.playModules.map(function(m) {
       return {
         title: m.title,
         subtitle: m.subtitle,
         playType: m.playType,
         condition: m.condition,
+        conditionText: m.conditionText,
         gifts: m.gifts.map(function(g) {
           return {
             giftPackId: g.giftPackId,
             giftTitle: g.giftTitle,
             giftIcon: g.giftIcon,
             condition: g.condition,
+            conditionText: g.conditionText,
             probability: g.probability
           };
         })
       };
     }),
-    _note: "头图/素材图片需在导入后重新上传",
+    _note: "头图/素材图片需在导入后重新上传，活动时间/AppID/任务文案会一并保留",
   };
   var blob = new Blob([JSON.stringify(config, null, 2)], { type: "application/json" });
   var url = URL.createObjectURL(blob);
@@ -977,6 +1302,12 @@ function importConfig() {
 function applyConfig(config) {
   state.platform = config.platform || "mobile";
   state.bgColor = config.bgColor || "#F5F7FA";
+  state.activityStartDate = config.activityStartDate || "";
+  state.activityEndDate = config.activityEndDate || "";
+  state.gameAppId = config.gameAppId || "";
+  state.materials = Array.from({ length: config.materialCount || 0 }).map(function(_, idx) {
+    return { id: Date.now() + Math.random() + idx, image: "" };
+  });
   state.playModules = (config.playModules || []).map(function(m) {
     return {
       id: Date.now() + Math.random(),
@@ -984,6 +1315,7 @@ function applyConfig(config) {
       subtitle: m.subtitle || "",
       playType: m.playType || "",
       condition: m.condition || "",
+      conditionText: m.conditionText || "",
       gifts: (m.gifts || []).map(function(g) {
         return {
           id: Date.now() + Math.random(),
@@ -991,6 +1323,7 @@ function applyConfig(config) {
           giftTitle: g.giftTitle || "",
           giftIcon: g.giftIcon || "",
           condition: g.condition || "",
+          conditionText: g.conditionText || "",
           probability: g.probability || ""
         };
       })
@@ -1004,7 +1337,11 @@ function applyConfig(config) {
   selectPlatform(state.platform, document.querySelectorAll("#platformGroup .radio-item")[state.platform === "mobile" ? 0 : 1]);
   document.getElementById("bgColor").value = state.bgColor;
   document.getElementById("bgColorHex").value = state.bgColor;
+  document.getElementById("activityStartDate").value = state.activityStartDate;
+  document.getElementById("activityEndDate").value = state.activityEndDate;
+  document.getElementById("gameAppId").value = state.gameAppId;
   
+  renderMaterials();
   renderPlayModules();
   updatePreview();
   saveToLocalStorage();
@@ -1018,6 +1355,9 @@ function resetConfig() {
     headerImage: "",
     materials: [],
     bgColor: "#F5F7FA",
+    activityStartDate: "",
+    activityEndDate: "",
+    gameAppId: "",
     playModules: [createEmptyPlayModule()]
   };
   
@@ -1026,6 +1366,9 @@ function resetConfig() {
   document.getElementById("headerUpload").classList.remove("has-file");
   document.getElementById("bgColor").value = "#F5F7FA";
   document.getElementById("bgColorHex").value = "#F5F7FA";
+  document.getElementById("activityStartDate").value = "";
+  document.getElementById("activityEndDate").value = "";
+  document.getElementById("gameAppId").value = "";
   
   renderMaterials();
   renderPlayModules();
@@ -1039,18 +1382,26 @@ function saveToLocalStorage() {
   var data = {
     platform: state.platform,
     bgColor: state.bgColor,
+    activityStartDate: state.activityStartDate,
+    activityEndDate: state.activityEndDate,
+    gameAppId: state.gameAppId,
+    materials: state.materials.map(function(m) {
+      return { image: m.image || "" };
+    }),
     playModules: state.playModules.map(function(m) {
       return {
         title: m.title,
         subtitle: m.subtitle,
         playType: m.playType,
         condition: m.condition,
+        conditionText: m.conditionText,
         gifts: m.gifts.map(function(g) {
           return {
             giftPackId: g.giftPackId,
             giftTitle: g.giftTitle,
             giftIcon: g.giftIcon,
             condition: g.condition,
+            conditionText: g.conditionText,
             probability: g.probability
           };
         })
@@ -1058,11 +1409,11 @@ function saveToLocalStorage() {
     }),
   };
   localStorage.setItem("h5_config_meta", JSON.stringify(data));
-  if (state.headerImage) localStorage.setItem("h5_config_header", state.headerImage);
-  // 保存素材图片
-  state.materials.forEach(function(m, idx) {
-    if (m.image) localStorage.setItem("h5_config_material_" + idx, m.image);
-  });
+  if (state.headerImage) {
+    localStorage.setItem("h5_config_header", state.headerImage);
+  } else {
+    localStorage.removeItem("h5_config_header");
+  }
 }
 
 function loadFromLocalStorage() {
@@ -1072,6 +1423,15 @@ function loadFromLocalStorage() {
     
     state.platform = meta.platform || "mobile";
     state.bgColor = meta.bgColor || "#F5F7FA";
+    state.activityStartDate = meta.activityStartDate || "";
+    state.activityEndDate = meta.activityEndDate || "";
+    state.gameAppId = meta.gameAppId || "";
+    state.materials = (meta.materials || []).map(function(m, idx) {
+      return {
+        id: Date.now() + Math.random() + idx,
+        image: m.image || ""
+      };
+    });
     state.playModules = (meta.playModules || []).map(function(m) {
       return {
         id: Date.now() + Math.random(),
@@ -1079,6 +1439,7 @@ function loadFromLocalStorage() {
         subtitle: m.subtitle || "",
         playType: m.playType || "",
         condition: m.condition || "",
+        conditionText: m.conditionText || "",
         gifts: (m.gifts || []).map(function(g) {
           return {
             id: Date.now() + Math.random(),
@@ -1086,6 +1447,7 @@ function loadFromLocalStorage() {
             giftTitle: g.giftTitle || "",
             giftIcon: g.giftIcon || "",
             condition: g.condition || "",
+            conditionText: g.conditionText || "",
             probability: g.probability || ""
           };
         })
@@ -1101,6 +1463,9 @@ function loadFromLocalStorage() {
     selectPlatform(state.platform, document.querySelectorAll("#platformGroup .radio-item")[state.platform === "mobile" ? 0 : 1]);
     document.getElementById("bgColor").value = state.bgColor;
     document.getElementById("bgColorHex").value = state.bgColor;
+    document.getElementById("activityStartDate").value = state.activityStartDate;
+    document.getElementById("activityEndDate").value = state.activityEndDate;
+    document.getElementById("gameAppId").value = state.gameAppId;
     
     if (state.headerImage) {
       document.getElementById("headerPreview").src = state.headerImage;
@@ -1108,6 +1473,7 @@ function loadFromLocalStorage() {
       document.getElementById("headerUpload").classList.add("has-file");
     }
     
+    renderMaterials();
     renderPlayModules();
     updatePreview();
   } catch (e) {}
